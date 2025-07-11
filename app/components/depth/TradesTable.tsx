@@ -8,7 +8,6 @@ type TradeData = {
   price: string;
   quantity: string;
   timestamp: number;
-  marketMaker: boolean;
 };
 
 export function TradesTable({ market }: { market: string }) {
@@ -34,7 +33,6 @@ export function TradesTable({ market }: { market: string }) {
           price: trade.price,
           quantity: trade.quantity,
           timestamp: trade.timestamp,
-          marketMaker: trade.marketMaker,
         }))
       )
     );
