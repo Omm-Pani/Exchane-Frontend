@@ -2,7 +2,7 @@ import axios from "axios";
 import { Depth, KLine, Ticker, Trade } from "./types";
 
 // const BASE_URL = "http://localhost:8000/api/v1";
-const BASE_URL = "https://exchange-proxy-ten.vercel.app/api/v1";
+const BASE_URL = "https://exchange-proxy-production.up.railway.app/api/v1";
 
 //get Ticker is the current price of the current market
 export async function getTicker(market: string): Promise<Ticker> {
