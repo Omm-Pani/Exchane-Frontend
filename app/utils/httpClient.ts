@@ -2,8 +2,7 @@ import axios from "axios";
 import { Depth, KLine, Ticker, Trade } from "./types";
 
 // const BASE_URL = "http://localhost:8000/api/v1";
-const BASE_URL =
-  "http://backpack-proxy-env.eba-i2hpnfv5.ap-south-1.elasticbeanstalk.com/api/v1";
+const BASE_URL = "https://proxy.omm-codes.tech/api/v1";
 
 //get Ticker is the current price of the current market
 export async function getTicker(market: string): Promise<Ticker> {
