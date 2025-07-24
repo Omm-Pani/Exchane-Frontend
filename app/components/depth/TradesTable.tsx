@@ -14,12 +14,13 @@ export function TradesTable({ market }: { market: string }) {
   const [trades, setTrades] = useState<TradeData[]>([]);
 
   useEffect(() => {
+    const callbackId = `TRADE-${market}`;
     SignalingManager.getInstance().registerCallback(
       "trade",
       (trade: TradeData) => {
-        setTrades((prevTrades) => [trade, ...prevTrades]);
+        setTrades((prevTrades) => [trade, ...prevTrades].slice(0, 50)); // Keep list to a reasonable size
       },
-      `TRADE-${market}`
+      callbackId
     );
 
     SignalingManager.getInstance().sendMessage({
@@ -27,9 +28,9 @@ export function TradesTable({ market }: { market: string }) {
       params: [`trade.${market}`],
     });
 
-    getTrades(market).then((trades) =>
+    getTrades(market).then((initialTrades) =>
       setTrades(
-        trades.map((trade) => ({
+        initialTrades.map((trade) => ({
           price: trade.price,
           quantity: trade.quantity,
           timestamp: trade.timestamp,
@@ -42,65 +43,52 @@ export function TradesTable({ market }: { market: string }) {
         method: "UNSUBSCRIBE",
         params: [`trade.${market}`],
       });
-      SignalingManager.getInstance().deRegisterCallback(
-        "trade",
-        `TRADE-${market}`
-      );
+      SignalingManager.getInstance().deRegisterCallback("trade", callbackId);
     };
   }, [market]);
 
   return (
-    <div className="">
-      <div className="flex flex-col h-full px-3">
-        <div className="flex justify-between flex-row w-2/3">
-          <p className="text-med-emphasis px-1 text-left text-xs font-semibold">
-            Price
-          </p>
-          <p className="text-med-emphasis px-1 text-left text-xs font-semibold">
-            Quantity
-          </p>
-        </div>
-        <div className="flex flex-col no-scrollbar overflow-y-auto">
-          {trades.map((trade, i) => {
-            const tradePrice = parseFloat(trade.price);
-            const prevPrice =
-              i === trades.length - 1
-                ? tradePrice
-                : parseFloat(trades[i + 1]?.price);
+    <div className="px-2 h-full flex flex-col">
+      {/* This header is now full-width and includes all 3 column titles */}
+      <div className="flex justify-between flex-row w-full text-xs text-slate-500 px-1 py-1">
+        <p className="w-1/3 text-left">Price</p>
+        <p className="w-1/3 text-right">Quantity</p>
+        <p className="w-1/3 text-right">Time</p>
+      </div>
+      <div className="flex flex-col no-scrollbar overflow-y-auto">
+        {trades.map((trade, i) => {
+          const tradePrice = parseFloat(trade.price);
+          const prevPrice =
+            i === trades.length - 1
+              ? tradePrice
+              : parseFloat(trades[i + 1]?.price);
 
-            const priceClass =
-              tradePrice >= prevPrice
-                ? "text-green-500"
-                : tradePrice < prevPrice
-                ? "text-red-600"
-                : "text-neutral-text";
+          const priceClass =
+            tradePrice > prevPrice
+              ? "text-green-500"
+              : tradePrice < prevPrice
+              ? "text-red-500"
+              : "text-slate-200";
 
-            return (
+          return (
+            <div
+              key={i}
+              className="flex flex-row w-full text-sm hover:bg-white/5"
+            >
               <div
-                key={i}
-                className="flex flex-row w-full cursor-default bg-transparent hover:bg-white/4"
+                className={`w-1/3 py-1 text-left tabular-nums ${priceClass}`}
               >
-                <div className="flex items-center flex-row w-[33.3%] py-1">
-                  <div
-                    className={`w-full text-sm font-normal capitalize tabular-nums ${priceClass} px-1 text-left`}
-                  >
-                    {trade.price}
-                  </div>
-                </div>
-                <div className="flex items-center flex-row w-[33.3%] py-1">
-                  <div className="w-full text-sm font-normal capitalize tabular-nums text-green-text px-1 text-right">
-                    {trade.quantity}
-                  </div>
-                </div>
-                <div className="flex items-center flex-row w-[33.3%] py-1">
-                  <div className="w-full text-sm font-normal capitalize tabular-nums text-green-text px-1 text-right">
-                    {new Date(trade.timestamp).toLocaleTimeString()}{" "}
-                  </div>
-                </div>
+                {trade.price}
               </div>
-            );
-          })}
-        </div>
+              <div className="w-1/3 py-1 text-right tabular-nums text-slate-200">
+                {trade.quantity}
+              </div>
+              <div className="w-1/3 py-1 text-right tabular-nums text-slate-500">
+                {new Date(trade.timestamp).toLocaleTimeString()}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

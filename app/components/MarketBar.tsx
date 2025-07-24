@@ -8,103 +8,82 @@ export const MarketBar = ({ market }: { market: string }) => {
   const [ticker, setTicker] = useState<Ticker | null>(null);
 
   useEffect(() => {
+    // Initial fetch
     getTicker(market).then(setTicker);
+
+    // WebSocket subscription
+    const callbackId = `TICKER-${market}`;
     SignalingManager.getInstance().registerCallback(
       "ticker",
       (data: Partial<Ticker>) =>
-        setTicker((prevTicker) => ({
-          firstPrice: data?.firstPrice ?? prevTicker?.firstPrice ?? "",
-          high: data?.high ?? prevTicker?.high ?? "",
-          lastPrice: data?.lastPrice ?? prevTicker?.lastPrice ?? "",
-          low: data?.low ?? prevTicker?.low ?? "",
-          priceChange: data?.priceChange ?? prevTicker?.priceChange ?? "",
-          priceChangePercent:
-            data?.priceChangePercent ?? prevTicker?.priceChangePercent ?? "",
-          quoteVolume: data?.quoteVolume ?? prevTicker?.quoteVolume ?? "",
-          symbol: data?.symbol ?? prevTicker?.symbol ?? "",
-          trades: data?.trades ?? prevTicker?.trades ?? "",
-          volume: data?.volume ?? prevTicker?.volume ?? "",
-        })),
-      `TICKER-${market}`
+        setTicker((prevTicker) => ({ ...prevTicker, ...data } as Ticker)),
+      callbackId
     );
     SignalingManager.getInstance().sendMessage({
       method: "SUBSCRIBE",
       params: [`ticker.${market}`],
     });
 
+    // Cleanup
     return () => {
-      SignalingManager.getInstance().deRegisterCallback(
-        "ticker",
-        `TICKER-${market}`
-      );
-      SignalingManager.getInstance().sendMessage({
-        method: "UNSUBSCRIBE",
-        params: [`ticker.${market}`],
-      });
+      SignalingManager.getInstance().deRegisterCallback("ticker", callbackId);
     };
   }, [market]);
-  //
+
+  const isPriceChangePositive = Number(ticker?.priceChange) >= 0;
 
   return (
     <div>
       <div className="flex items-center flex-row relative w-full overflow-hidden border-b border-slate-800">
-        <div className="flex items-center justify-between flex-row no-scrollbar overflow-auto pr-4">
+        <div className="flex items-center justify-between flex-row w-full no-scrollbar overflow-x-auto p-2">
           <Ticker market={market} />
-          <div className="flex items-center flex-row space-x-8 pl-4">
+          {/* Stats Container */}
+          <div className="flex items-center flex-row space-x-4 sm:space-x-6 lg:space-x-8 pl-4">
+            {/* Last Price */}
             <div className="flex flex-col h-full justify-center">
+              <p className="font-medium text-xs text-slate-400">Last Price</p>
               <p
-                className={`font-medium tabular-nums text-greenText text-md ${
-                  Number(ticker?.priceChange) > 0
-                    ? "text-green-500"
-                    : "text-red-500"
+                className={`font-medium tabular-nums text-md ${
+                  isPriceChangePositive ? "text-green-500" : "text-red-500"
                 }`}
               >
                 ${ticker?.lastPrice}
               </p>
-              <p className="font-medium text-sm  tabular-nums">
-                ${ticker?.lastPrice}
-              </p>
             </div>
+            {/* 24H Change */}
             <div className="flex flex-col">
-              <p className={`font-medium text-slate-400 text-sm`}>24H Change</p>
+              <p className="font-medium text-xs text-slate-400">24H Change</p>
               <p
-                className={`font-medium tabular-nums leading-5 text-sm text-greenText ${
-                  Number(ticker?.priceChange) > 0
-                    ? "text-green-500"
-                    : "text-red-500"
+                className={`font-medium tabular-nums leading-5 text-sm ${
+                  isPriceChangePositive ? "text-green-500" : "text-red-500"
                 }`}
               >
-                {Number(ticker?.priceChange) > 0 ? "+" : ""}{" "}
-                {ticker?.priceChange}{" "}
-                {Number(ticker?.priceChangePercent)?.toFixed(2)}%
+                {isPriceChangePositive ? "+" : ""}
+                {ticker?.priceChange} (
+                {Number(ticker?.priceChangePercent)?.toFixed(2)}%)
               </p>
             </div>
-            <div className="flex flex-col">
+            {/* 24H High - HIDDEN on smaller screens */}
+            <div className="hidden lg:flex flex-col">
               <p className="font-medium text-xs text-slate-400">24H High</p>
-              <p className="text-sm font-medium tabular-nums leading-5 ">
+              <p className="text-sm font-medium tabular-nums leading-5 text-white">
                 {ticker?.high}
               </p>
             </div>
-            <div className="flex flex-col">
+            {/* 24H Low - HIDDEN on smaller screens */}
+            <div className="hidden lg:flex flex-col">
               <p className="font-medium text-xs text-slate-400">24H Low</p>
-              <p className="text-sm font-medium tabular-nums leading-5 ">
+              <p className="text-sm font-medium tabular-nums leading-5 text-white">
                 {ticker?.low}
               </p>
             </div>
-            <button
-              type="button"
-              className="font-medium transition-opacity hover:opacity-80 hover:cursor-pointer text-base text-left"
-              data-rac=""
-            >
-              <div className="flex flex-col">
-                <p className="font-medium text-xs text-slate-400 ">
-                  24H Volume
-                </p>
-                <p className="mt-1 font-medium tabular-nums leading-5 text-sm ">
-                  {ticker?.volume}
-                </p>
-              </div>
-            </button>
+            {/* 24H Volume - HIDDEN on smaller screens */}
+            <div className="hidden lg:flex flex-col">
+              <p className="font-medium text-xs text-slate-400">24H Volume</p>
+              <p className="mt-1 font-medium tabular-nums leading-5 text-sm text-white">
+                {ticker?.volume}
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -113,37 +92,28 @@ export const MarketBar = ({ market }: { market: string }) => {
 };
 
 function Ticker({ market }: { market: string }) {
+  // Simple display component for the market ticker
   return (
-    <div className="flex h-[60px] shrink-0 space-x-4">
-      <div className="flex flex-row relative ml-2 -mr-4">
+    <div className="flex items-center h-[60px] shrink-0 space-x-2">
+      <div className="flex flex-row relative">
         <img
-          alt="SOL Logo"
-          loading="lazy"
-          decoding="async"
-          data-nimg="1"
-          className="z-10 rounded-full h-6 w-6 mt-4 outline-baseBackgroundL1"
+          alt="Base Asset"
+          className="z-10 rounded-full h-6 w-6 outline-baseBackgroundL1"
           src="/sol.webp"
         />
         <img
-          alt="USDC Logo"
-          loading="lazy"
-          decoding="async"
-          data-nimg="1"
-          className="h-6 w-6 -ml-2 mt-4 rounded-full"
+          alt="Quote Asset"
+          className="h-6 w-6 -ml-2 rounded-full"
           src="/usdc.webp"
         />
       </div>
-      <button type="button" className="react-aria-Button" data-rac="">
-        <div className="flex items-center justify-between flex-row cursor-pointer rounded-lg p-3 hover:opacity-80">
-          <div className="flex items-center flex-row gap-2 undefined">
-            <div className="flex flex-row relative">
-              <p className="font-medium text-sm undefined">
-                {market.replace("_", " / ")}
-              </p>
-            </div>
-          </div>
+      <div className="flex items-center justify-between flex-row rounded-lg">
+        <div className="flex items-center flex-row gap-2">
+          <p className="font-medium text-sm text-white">
+            {market.replace("_", " / ")}
+          </p>
         </div>
-      </button>
+      </div>
     </div>
   );
 }

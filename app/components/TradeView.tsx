@@ -5,7 +5,8 @@ import { KLine } from "../utils/types";
 
 export function TradeView({ market }: { market: string }) {
   const chartRef = useRef<HTMLDivElement>(null);
-  const chartManagerRef = useRef<ChartManager>(null);
+  // Using a more specific type for the ref to avoid @ts-ignore
+  const chartManagerRef = useRef<ChartManager | null>(null);
 
   useEffect(() => {
     const init = async () => {
@@ -14,8 +15,9 @@ export function TradeView({ market }: { market: string }) {
         klineData = await getKlines(
           market,
           "1h",
-          Math.floor((new Date().getTime() - 1000 * 60 * 60 * 24 * 7) / 1000),
-          Math.floor(new Date().getTime() / 1000)
+          // Get data for the last 7 days
+          Math.floor((Date.now() - 1000 * 60 * 60 * 24 * 7) / 1000),
+          Math.floor(Date.now() / 1000)
         );
       } catch (e) {
         console.error("Error fetching KLines:", e);
@@ -23,27 +25,28 @@ export function TradeView({ market }: { market: string }) {
 
       if (!chartRef.current) return;
 
+      // If a chart instance already exists, destroy it before creating a new one
       if (chartManagerRef.current) {
         chartManagerRef.current.destroy();
       }
 
       const chartManager = new ChartManager(
         chartRef.current,
-        [
-          ...klineData?.map((x) => ({
+        klineData
+          ?.map((x) => ({
             close: parseFloat(x.close),
             high: parseFloat(x.high),
             low: parseFloat(x.low),
             open: parseFloat(x.open),
+            // Ensure timestamp is a Date object
             timestamp: new Date(x.end),
-          })),
-        ].sort((x, y) => (x.timestamp < y.timestamp ? -1 : 1)) || [],
+          }))
+          .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime()) || [],
         {
           background: "#0e0f14",
           color: "white",
         }
       );
-      //@ts-ignore
       chartManagerRef.current = chartManager;
     };
     init();
@@ -55,10 +58,7 @@ export function TradeView({ market }: { market: string }) {
 
   return (
     <>
-      <div
-        ref={chartRef}
-        style={{ height: "520px", width: "100%", marginTop: 4 }}
-      ></div>
+      <div ref={chartRef} className="w-full h-[400px] lg:h-[520px] mt-1"></div>
     </>
   );
 }
